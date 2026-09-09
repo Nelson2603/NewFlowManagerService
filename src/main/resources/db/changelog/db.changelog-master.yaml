@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/v1/01-create-files-table.yaml
+  - include:
+      file: db/changelog/v1/02-create-outbox-events-table.yaml
+  - include:
+      file: db/changelog/v1/03-add-index-outbox.yaml

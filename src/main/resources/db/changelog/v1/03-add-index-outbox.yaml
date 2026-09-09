@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 3
+      author: your_name
+      comment: "Добавление индекса на outbox_events по статусу и дате создания"
+      changes:
+        - addIndex:
+            tableName: outbox_events
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: created_at
+            indexName: idx_outbox_status_created
