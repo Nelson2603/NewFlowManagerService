@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 3
-      author: your_name
+      author: nail
       comment: "Добавление индекса на outbox_events по статусу и дате создания"
       changes:
         - addIndex:

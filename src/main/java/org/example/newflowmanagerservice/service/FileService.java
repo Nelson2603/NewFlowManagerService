@@ -2,6 +2,7 @@ package org.example.newflowmanagerservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.newflowmanagerservice.config.KafkaProperties;
 import org.example.newflowmanagerservice.dto.FileResponse;
 import org.example.newflowmanagerservice.entity.FileEntity;
 import org.example.newflowmanagerservice.entity.FileStatus;
@@ -9,6 +10,7 @@ import org.example.newflowmanagerservice.entity.OutboxEvent;
 import org.example.newflowmanagerservice.exeptions.FileOperationException;
 import org.example.newflowmanagerservice.exeptions.MinioStorageException;
 import org.example.newflowmanagerservice.exeptions.ResourceNotFoundException;
+import org.example.newflowmanagerservice.mapper.FileMapper;
 import org.example.newflowmanagerservice.mapper.OutboxEventMapper;
 import org.example.newflowmanagerservice.repository.FileRepository;
 import org.springframework.stereotype.Service;
@@ -24,14 +26,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileService {
     private final MinioService minioService;
+    private final FileMapper fileMapper;
     private final FileRepository fileRepository;
     private final FileRecoveryService recoveryService;
     private final OutboxEventMapper outboxEventMapper;
     private final OutboxService outboxService;
+    private final KafkaProperties kafkaProperties;
 
-    private static final String KAFKA_TOPIC_TO_CONVERT = "to-convert";
-    private static final int MAX_RETRIES = 3;
-    private static final long RETRY_DELAY_MS = 1000;
+
 
     /**
      * Загрузка файла: MinIO → БД + Outbox (в одной транзакции)
@@ -80,7 +82,7 @@ public class FileService {
         try {
             FileEntity savedEntity = saveFileWithOutbox(fileEntity);
             log.info("💾 Данные о файле и Outbox событие сохранены");
-            return FileResponse.fromEntity(savedEntity);
+            return fileMapper.toResponse(savedEntity);
 
         } catch (Exception e) {
             log.error("❌ Ошибка сохранения в БД. Файл уже в MinIO: {}", minioPath, e);
@@ -89,15 +91,8 @@ public class FileService {
             recoveryService.addToRecoveryQueue(fileEntity);
 
             // Возвращаем ответ клиенту, что файл загружен, но информация будет обработана позже
-            return FileResponse.builder()
-                    .fileId(fileEntity.getId())
-                    .fileName(fileEntity.getOriginalFileName())
-                    .originalFileName(fileEntity.getOriginalFileName())
-                    .minioPath(fileEntity.getMinioPath())
-                    .status(FileStatus.IN_PROCESS)
-                    .message("Файл загружен, информация будет обработана в фоне")
-                    .createdAt(LocalDateTime.now())
-                    .build();
+            return fileMapper.toResponse(fileEntity,
+                    "файл загружен , инфа будет отработана в фоне");
         }
     }
 
@@ -105,6 +100,7 @@ public class FileService {
      * Сохранение файла и Outbox события в одной транзакции.
      * Если транзакция откатится, файл уже в MinIO, но запись в БД не появится.
      */
+
     @Transactional
     public FileEntity saveFileWithOutbox(FileEntity fileEntity) {
         // 1. Сохраняем запись о файле
@@ -113,7 +109,7 @@ public class FileService {
         // 2. Создаём Outbox-событие
         OutboxEvent outboxEvent = outboxEventMapper.toOutboxEvent(
                 savedEntity,
-                KAFKA_TOPIC_TO_CONVERT
+                kafkaProperties.getTopics().getToConvert()
         );
 
         // 3. Сохраняем Outbox-событие (в той же транзакции)
@@ -134,7 +130,7 @@ public class FileService {
                     return new ResourceNotFoundException("Файл не найден с ID: " + fileId);
                 });
 
-        return FileResponse.fromEntity(entity);
+        return fileMapper.toResponse(entity);
     }
 
     /**
@@ -162,36 +158,7 @@ public class FileService {
         log.info("💾 Статус сохранен в БД");
     }
 
-    /**
-     * Сохранение в БД с повторными попытками (используется при восстановлении)
-     */
-    private FileEntity saveWithRetry(FileEntity fileEntity) {
-        int attempts = 0;
-        Exception lastException = null;
 
-        while (attempts < MAX_RETRIES) {
-            try {
-                attempts++;
-                log.info("🔄 Попытка {} сохранения в БД", attempts);
-                return fileRepository.save(fileEntity);
-
-            } catch (Exception e) {
-                lastException = e;
-                log.warn("⚠️ Ошибка сохранения в БД (попытка {}): {}", attempts, e.getMessage());
-
-                if (attempts < MAX_RETRIES) {
-                    try {
-                        Thread.sleep(RETRY_DELAY_MS * attempts);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-        }
-
-        throw new FileOperationException("Не удалось сохранить в БД после " + MAX_RETRIES + " попыток", lastException);
-    }
 
     /**
      * Извлечение расширения файла

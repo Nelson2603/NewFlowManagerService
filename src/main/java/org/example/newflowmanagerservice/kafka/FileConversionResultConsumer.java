@@ -17,7 +17,10 @@ public class FileConversionResultConsumer {
     private final FileService fileService;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "file-conversion-responses", groupId = "flow-manager-group")
+    @KafkaListener(
+            topics = "${app.kafka.topics.conversion-responses}",
+            groupId = "${app.kafka.group-id}"
+    )
     public void consume(String message) {
         log.info("📩 Получен результат конвертации: {}", message);
         try {

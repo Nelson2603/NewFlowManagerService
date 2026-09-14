@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 2
-      author: your_name
+      author: nail
       comment: "Создание таблицы outbox_events"
       changes:
         - createTable:

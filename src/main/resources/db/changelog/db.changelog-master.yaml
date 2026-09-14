@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/v1/02-create-outbox-events-table.yaml
   - include:
       file: db/changelog/v1/03-add-index-outbox.yaml
+  - include:
+      file: db/changelog/v1/04-create-shedlock-table.yaml

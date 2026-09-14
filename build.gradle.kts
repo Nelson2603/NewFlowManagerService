@@ -32,6 +32,12 @@ dependencies {
     implementation("io.minio:minio:9.0.3")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.kafka:spring-kafka")
+
+    implementation("net.javacrumbs.shedlock:shedlock-spring:7.10.1")
+
+
+    implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.10.1")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
