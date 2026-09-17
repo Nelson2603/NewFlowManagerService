@@ -1,6 +1,6 @@
 spring:
   application:
-   name: NewFlowManagerService
+   name: flow-manager
 
   datasource:
     url: jdbc:postgresql://localhost:5432/flowmanager2
@@ -61,3 +61,13 @@ minio:
 server:
   port: 8082
 
+eureka:
+  client:
+    service-url:
+
+      defaultZone: http://localhost:8761/eureka/
+
+  instance:
+    prefer-ip-address: true          # ← использовать IP вместо hostname
+    ip-address: 127.0.0.1            # ← явно указать localhost
+    instance-id: ${spring.application.name}:${server.port}

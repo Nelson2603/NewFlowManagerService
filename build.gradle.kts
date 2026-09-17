@@ -2,7 +2,7 @@
 // 优质的 spring/boot/data/security/cloud 框架中文文档尽在 => https://springdoc.cn
 plugins {
     java
-    id("org.springframework.boot") version "3.3.5"
+    id("org.springframework.boot") version "3.5.3"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -38,11 +38,19 @@ dependencies {
 
     implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:7.10.1")
 
+    implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2025.0.0")
+    }
 }
 
 tasks.withType<Test> {

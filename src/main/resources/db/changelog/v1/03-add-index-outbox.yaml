@@ -4,7 +4,7 @@ databaseChangeLog:
       author: nail
       comment: "Добавление индекса на outbox_events по статусу и дате создания"
       changes:
-        - addIndex:
+        - createIndex:
             tableName: outbox_events
             columns:
               - column:
