@@ -15,21 +15,23 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
-public class  FileController {
+public class FileController {
 
     private final FileService fileService;
 
     @PostMapping("/upload")
-    public ResponseEntity<FileResponse> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<FileResponse> uploadFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Login", required = false) String userLogin) {
         log.info("Получен запрос на загрузку файла : {}", file.getOriginalFilename());
-
-        FileResponse response = fileService.uploadFile(file);
+        log.info("Логин пользователя из заголовка: {}", userLogin);
+        FileResponse response = fileService.uploadFile(file,userLogin);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<FileResponse> getFileInfo(@PathVariable String id){
-        log.info("Запрос информации : {}",id);
+    public ResponseEntity<FileResponse> getFileInfo(@PathVariable String id) {
+        log.info("Запрос информации : {}", id);
         return ResponseEntity.ok(fileService.getFileInfo(id));
     }
 }

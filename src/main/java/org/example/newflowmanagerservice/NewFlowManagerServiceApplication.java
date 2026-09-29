@@ -2,6 +2,7 @@ package org.example.newflowmanagerservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 
@@ -9,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 // 优质的 spring/boot/data/security/cloud 框架中文文档尽在 => https://springdoc.cn
 @SpringBootApplication
 @EnableScheduling
+@EnableFeignClients
 public class NewFlowManagerServiceApplication {
 
     public static void main(String[] args) {
