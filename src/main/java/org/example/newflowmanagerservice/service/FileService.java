@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.newflowmanagerservice.config.KafkaProperties;
 import org.example.newflowmanagerservice.dto.FileResponse;
+import org.example.newflowmanagerservice.dto_feign.SubscriptionDto;
 import org.example.newflowmanagerservice.entity.FileEntity;
 import org.example.newflowmanagerservice.entity.FileStatus;
 import org.example.newflowmanagerservice.entity.OutboxEvent;
@@ -13,12 +14,16 @@ import org.example.newflowmanagerservice.exeptions.ResourceNotFoundException;
 import org.example.newflowmanagerservice.mapper.FileMapper;
 import org.example.newflowmanagerservice.mapper.OutboxEventMapper;
 import org.example.newflowmanagerservice.repository.FileRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -32,13 +37,18 @@ public class FileService {
     private final OutboxEventMapper outboxEventMapper;
     private final OutboxService outboxService;
     private final KafkaProperties kafkaProperties;
+    private final SubscriptionCacheService subscriptionCacheService;
 
+    @Value("${app.subscription.free-file-size-limit-bytes:104857600}")
+    private long freeFileSizeLimitBytes;
 
 
     /**
      * Загрузка файла: MinIO → БД + Outbox (в одной транзакции)
      */
-    public FileResponse uploadFile(MultipartFile file) {
+    public FileResponse uploadFile(MultipartFile file,String userLogin) {
+        checkSubscriptionLimit(userLogin, file.getSize());
+
         // 1. Генерация ID и пути
         String fileId = UUID.randomUUID().toString();
         String originalFileName = file.getOriginalFilename();
@@ -191,4 +201,43 @@ public class FileService {
         fileRepository.save(entity);
         log.info("💾 Статус сохранен в БД");
     }
+          //Метод проверки подписки и размера файла
+    private void checkSubscriptionLimit(String login, long fileSize) {
+        if (fileSize <= freeFileSizeLimitBytes) {
+            log.debug("Файл {} байт ≤ {} — подписка не требуется",
+                    fileSize, freeFileSizeLimitBytes);
+            return;
+        }
+
+        log.info("Файл {} байт > {} — проверяем подписку для {}",
+                fileSize, freeFileSizeLimitBytes, login);
+
+       SubscriptionDto sub = subscriptionCacheService.getSubscription(login);
+
+        if (sub == null) {
+            log.warn("Подписка для {} не найдена", login);
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Подписка не найдена. Файлы больше 100 МБ доступны только по платной подписке."
+            );
+        }
+
+
+        boolean isPaid = "PAID".equals(sub.type());
+        boolean notExpired = sub.expiresAt() != null
+                && sub.expiresAt().isAfter(LocalDateTime.now());
+
+        if (!isPaid || !notExpired) {
+            log.warn("Отказано в загрузке для {}: type={}, expiresAt={}",
+                    login, sub.type(), sub.expiresAt());
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Платная подписка истекла или отсутствует. Файлы больше 100 МБ недоступны."
+            );
+        }
+
+        log.info("Разрешено: {} имеет активную PAID-подписку до {}",
+                login, sub.expiresAt());
+    }
+
 }

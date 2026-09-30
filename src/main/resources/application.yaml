@@ -17,6 +17,27 @@ spring:
         format_sql: true
 
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: ${app.subscription.cache-ttl-minutes:30}m
+      cache-null-values: false
+      key-prefix: "flow-manager:"
+      use-key-prefix: true
+
+
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.yaml
@@ -41,6 +62,12 @@ app:
     topics:
       to-convert: to-convert
       conversion-responses: file-conversion-responses
+      subscription-changed: subscription-changed
+
+  subscription:
+    free-file-size-limit-bytes: 104857600          # 100 МБ = 100 * 1024 * 1024
+    cache-ttl-minutes: 30                          # сколько держать кеш в Redis
+
 
   scheduler:
     process-pending:
