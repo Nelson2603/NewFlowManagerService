@@ -212,9 +212,9 @@ public class FileService {
         log.info("Файл {} байт > {} — проверяем подписку для {}",
                 fileSize, freeFileSizeLimitBytes, login);
 
-        Optional<SubscriptionDto> maybeSub = subscriptionCacheService.getSubscription(login);
+       SubscriptionDto sub = subscriptionCacheService.getSubscription(login);
 
-        if (maybeSub.isEmpty()) {
+        if (sub == null) {
             log.warn("Подписка для {} не найдена", login);
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -222,7 +222,7 @@ public class FileService {
             );
         }
 
-        SubscriptionDto sub = maybeSub.get();
+
         boolean isPaid = "PAID".equals(sub.type());
         boolean notExpired = sub.expiresAt() != null
                 && sub.expiresAt().isAfter(LocalDateTime.now());

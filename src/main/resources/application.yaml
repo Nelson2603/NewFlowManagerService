@@ -29,6 +29,14 @@ spring:
           min-idle: 1
 
 
+  cache:
+    type: redis
+    redis:
+      time-to-live: ${app.subscription.cache-ttl-minutes:30}m
+      cache-null-values: false
+      key-prefix: "flow-manager:"
+      use-key-prefix: true
+
 
   liquibase:
     enabled: true
